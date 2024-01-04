@@ -1,0 +1,63 @@
+pragma solidity ^0.8.0;
+
+contract NOS {
+    uint public difficulty = 3; // Initial difficulty
+    uint public nonce = 0;
+    uint public blockNumber = 0;
+    bytes32 public previousBlockHash;
+    bytes32 public currentBlockHash;
+
+    struct Transaction {
+        address sender;
+        address receiver;
+        uint amount;
+        uint timestamp;
+    }
+
+    struct Block {
+        uint blockNumber;
+        uint timestamp;
+        bytes32 previousHash;
+        bytes32 currentHash;
+        uint nonce;
+        uint numTransactions;
+        mapping(uint => Transaction) transactions;
+    }
+
+    mapping(uint => Block) public blocks;
+
+    constructor() {
+        createBlock(bytes32(0));
+    }
+
+    function createBlock(bytes32 _previousHash) public {
+        blockNumber++;
+        nonce = 0;
+        previousBlockHash = _previousHash;
+        bytes32 newHash = calculateHash(blockNumber, _previousHash, nonce);
+        while (uint256(newHash) > difficulty) {
+            nonce++;
+            newHash = calculateHash(blockNumber, _previousHash, nonce);
+        }
+        currentBlockHash = newHash;
+        blocks[blockNumber] = Block(blockNumber, block.timestamp, _previousHash, newHash, nonce, 0);
+    }
+
+    function mineBlock() public {
+        createBlock(currentBlockHash);
+    }
+
+    function addTransaction(address _sender, address _receiver, uint _amount) public {
+        Transaction memory newTransaction = Transaction(_sender, _receiver, _amount, block.timestamp);
+        blocks[blockNumber].transactions[blocks[blockNumber].numTransactions] = newTransaction;
+        blocks[blockNumber].numTransactions++;
+    }
+
+    function calculateHash(uint _blockNumber, bytes32 _previousHash, uint _nonce) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_blockNumber, _previousHash, _nonce));
+    }
+
+    function getBlockHash(uint _blockNumber) public view returns (bytes32) {
+        return blocks[_blockNumber].currentHash;
+    }
+}
